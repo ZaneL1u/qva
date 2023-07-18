@@ -1,10 +1,13 @@
 {
   "name": "qva",
-  "version": "0.0.1",
+  "version": "0.0.1-alpha.1",
   "description": "简单的工具集",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "publishConfig": {
+    "registry": "http://registry.athesoft.com/repository/npm-hosted/"
   },
   "author": "Yorksh1re",
   "license": "MIT"
