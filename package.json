@@ -1,7 +1,7 @@
 {
   "name": "qva",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "packageManager": "pnpm@9.10.0",
   "description": "一个快速的 JavaScript 实用工具库",
   "author": {
