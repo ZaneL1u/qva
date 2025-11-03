@@ -2,140 +2,181 @@ type SortOrder = 'asc' | 'desc'
 type Comparator<T> = (a: T, b: T) => number
 type RecordType = Record<string, string | number>
 
-// 函数重载签名
 export function timSort(arr: number[], order?: SortOrder): number[]
 export function timSort<T>(arr: T[], comparator: Comparator<T>): T[]
 export function timSort(arr: Array<RecordType>, key: keyof RecordType, order?: SortOrder): Array<RecordType>
 
-// 实现函数
 export function timSort<T>(
   arr: number[] | T[] | Array<RecordType>,
   arg2?: SortOrder | Comparator<T> | keyof RecordType,
   arg3?: SortOrder,
-): number[] | T[] | Array<RecordType> {
-  const sortedArr: any[] = [...arr] // 复制数组，避免修改原数组
+): any[] {
+  const a = [...arr]
+  let compare: Comparator<any>
 
+  // Handle custom comparator function
   if (typeof arg2 === 'function') {
-    // 情况 2: 自定义比较函数
-    customSort(sortedArr, arg2)
+    compare = arg2
   }
-  else if (typeof arg2 === 'string' && arg3 === undefined) {
-    // 情况 1: 数字数组，升序或降序
-    const order = arg2 ?? 'asc'
-    const comparator = (a: number, b: number) => {
-      return order === 'asc' ? a - b : b - a
-    }
-    defaultSort(sortedArr as number[], comparator)
-  }
-  else if (arg2 === undefined) {
-    // 新增：处理没有提供排序顺序的情况
-    const comparator = (a: number, b: number) => a - b
-    defaultSort(sortedArr as number[], comparator)
-  }
-  else if (typeof arg2 === 'string' && arg3 !== undefined) {
-    // 情况 3: 对象数组，按 key 排序
-    const key = arg2 as keyof RecordType
+  // Handle object array sorting by key
+  else if (typeof arg2 === 'string' && arg3 !== undefined || arg2 === undefined && isRecordArray(a)) {
+    const key = (arg2 ?? (a[0] && Object.keys(a[0] as any)[0])) as keyof RecordType
     const order = arg3 ?? 'asc'
-    const comparator = (a: RecordType, b: RecordType) => {
-      const aValue = a[key]
-      const bValue = b[key]
-
-      // 处理 undefined 值
-      if (aValue === undefined)
+    compare = (x: any, y: any) => {
+      const av = x[key]
+      const bv = y[key]
+      if (av === undefined)
         return 1
-      if (bValue === undefined)
+      if (bv === undefined)
         return -1
-
-      // 如果是不同类型，数字在前，字符串在后
-      if (typeof aValue !== typeof bValue) {
-        return typeof aValue === 'number' ? -1 : 1
-      }
-
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return order === 'asc' ? aValue - bValue : bValue - aValue
-      }
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return order === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue)
-      }
-      return 0 // 如果值相等，保持原有顺序
-    }
-    customSort(sortedArr as RecordType[], comparator)
-  }
-
-  return sortedArr // 返回排序结果
-}
-
-// 默认的比较函数
-function defaultSort(arr: number[], compare: Comparator<number>): void {
-  timSortCore(arr, compare)
-}
-
-// 自定义比较排序
-function customSort<T>(arr: T[], compare: Comparator<T>): void {
-  timSortCore(arr, compare)
-}
-
-// Timsort 核心算法
-function timSortCore<T>(arr: T[], compare: Comparator<T>): void {
-  const MIN_RUN = 32
-
-  // 插入排序
-  function insertionSort(arr: T[], left: number, right: number): void {
-    for (let i = left + 1; i <= right; i++) {
-      const key = arr[i]
-      let j = i - 1
-      while (j >= left && compare(arr[j], key) > 0) {
-        arr[j + 1] = arr[j]
-        j--
-      }
-      arr[j + 1] = key
+      if (typeof av !== typeof bv)
+        return typeof av === 'number' ? -1 : 1
+      if (typeof av === 'number')
+        return order === 'asc' ? av - bv : bv - av
+      return order === 'asc'
+        ? String(av).localeCompare(String(bv))
+        : String(bv).localeCompare(String(av))
     }
   }
-
-  // 合并两个子数组
-  function merge(arr: T[], left: number, mid: number, right: number): void {
-    const leftArray = arr.slice(left, mid + 1)
-    const rightArray = arr.slice(mid + 1, right + 1)
-
-    let i = 0
-    let j = 0
-    let k = left
-
-    while (i < leftArray.length && j < rightArray.length) {
-      if (compare(leftArray[i], rightArray[j]) <= 0) {
-        arr[k++] = leftArray[i++]
-      }
-      else {
-        arr[k++] = rightArray[j++]
-      }
-    }
-
-    while (i < leftArray.length) {
-      arr[k++] = leftArray[i++]
-    }
-
-    while (j < rightArray.length) {
-      arr[k++] = rightArray[j++]
-    }
+  // Handle number array sorting
+  else {
+    const order = (arg2 as SortOrder) ?? 'asc'
+    compare = (x: number, y: number) => order === 'asc' ? x - y : y - x
   }
 
-  // Timsort 主逻辑
+  timsortCore(a, compare)
+  return a
+}
+
+/**
+ * Core Timsort algorithm implementation
+ * - Detects natural runs in data
+ * - Uses binary insertion sort for small runs
+ * - Merges runs with galloping mode for efficiency
+ */
+function timsortCore<T>(arr: T[], cmp: Comparator<T>): void {
   const n = arr.length
+  if (n <= 1)
+    return
 
-  for (let start = 0; start < n; start += MIN_RUN) {
-    const end = Math.min(start + MIN_RUN - 1, n - 1)
-    insertionSort(arr, start, end)
+  // Calculate minrun (between 32 and 64)
+  let minrun = n
+  while (minrun >= 64) minrun = (minrun >>> 1) + (minrun & 1)
+  minrun = Math.max(32, Math.min(64, minrun))
+
+  const stack: { start: number, len: number }[] = []
+
+  const pushRun = (start: number, len: number) => stack.push({ start, len })
+  const mergeAt = (i: number) => {
+    const A = stack[i]; const B = stack[i + 1]
+    merge(arr, A.start, A.start + A.len, B.start + B.len, cmp)
+    stack.splice(i, 2, { start: A.start, len: A.len + B.len })
   }
 
-  for (let size = MIN_RUN; size < n; size *= 2) {
-    for (let left = 0; left < n; left += size * 2) {
-      const mid = left + size - 1
-      const right = Math.min(left + 2 * size - 1, n - 1)
-      if (mid < right) {
-        merge(arr, left, mid, right)
-      }
+  // Detect natural runs in the data
+  for (let i = 0; i < n;) {
+    let j = i + 1
+    if (j === n) { pushRun(i, 1); break }
+
+    const desc = cmp(arr[i], arr[j]) > 0
+    while (j < n) {
+      const c = cmp(arr[j - 1], arr[j])
+      if (desc ? c > 0 : c < 0)
+        break
+      j++
+    }
+    if (desc)
+      reverse(arr, i, j - 1)
+
+    // Extend run to minrun using binary insertion sort
+    while (j - i < minrun && j < n) {
+      binaryInsert(arr, i, j, arr[j], cmp)
+      j++
+    }
+
+    pushRun(i, j - i)
+    i = j
+  }
+
+  // Merge runs while maintaining invariants: X > Y+Z and Y > Z
+  while (stack.length > 1) {
+    const len = stack.length
+    if (len > 2 && stack[len - 3].len <= stack[len - 2].len + stack[len - 1].len) {
+      mergeAt(len - 3)
+    }
+    else if (stack[len - 2].len <= stack[len - 1].len) {
+      mergeAt(len - 2)
+    }
+    else {
+      break
     }
   }
+  while (stack.length > 1) mergeAt(stack.length - 2)
+}
+
+/**
+ * Merge two adjacent sorted runs with galloping mode optimization
+ */
+function merge<T>(arr: T[], lo: number, mi: number, hi: number, cmp: Comparator<T>): void {
+  const tmp = arr.slice(lo, hi)
+  let i = 0; let j = mi - lo; let k = lo
+
+  while (i < mi - lo && j < hi - lo) {
+    if (gallop(tmp, j, tmp[i], mi - lo, hi - lo, cmp)) {
+      while (i < mi - lo) arr[k++] = tmp[i++]
+    }
+    else if (gallop(tmp, i, tmp[j], 0, mi - lo, (a, b) => -cmp(a, b))) {
+      while (j < hi - lo) arr[k++] = tmp[j++]
+    }
+    else {
+      arr[k++] = cmp(tmp[i], tmp[j]) <= 0 ? tmp[i++] : tmp[j++]
+    }
+  }
+  while (i < mi - lo) arr[k++] = tmp[i++]
+  while (j < hi - lo) arr[k++] = tmp[j++]
+}
+
+/**
+ * Galloping mode: exponential search followed by binary search
+ * Activated when 7+ consecutive elements come from the same run
+ */
+function gallop<T>(src: T[], base: number, key: T, lo: number, hi: number, cmp: Comparator<T>): boolean {
+  let step = 1; let last = 0
+  if (cmp(src[base], key) > 0)
+    return true
+  while (step < hi - base && cmp(src[base + step], key) <= 0) {
+    last = step; step = (step << 1) | 1
+  }
+  step = Math.min(step, hi - base)
+  lo = base + last; hi = base + step
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1
+    if (cmp(src[mid], key) <= 0)
+      lo = mid + 1
+    else hi = mid
+  }
+  return lo - base >= 7
+}
+
+/**
+ * Insert element using binary search to find position
+ */
+function binaryInsert<T>(arr: T[], lo: number, hi: number, val: T, cmp: Comparator<T>): void {
+  let l = lo; let r = hi
+  while (l < r) {
+    const m = (l + r) >>> 1
+    if (cmp(arr[m], val) > 0)
+      r = m
+    else l = m + 1
+  }
+  for (let i = hi; i > l; i--) arr[i] = arr[i - 1]
+  arr[l] = val
+}
+
+function reverse<T>(arr: T[], lo: number, hi: number): void {
+  while (lo < hi) [arr[lo++], arr[hi--]] = [arr[hi], arr[lo]]
+}
+
+function isRecordArray(arr: any[]): arr is Array<RecordType> {
+  return arr.length > 0 && typeof arr[0] === 'object' && arr[0] !== null
 }
