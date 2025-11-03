@@ -2,7 +2,7 @@
   "name": "qva",
   "type": "module",
   "version": "0.0.2",
-  "packageManager": "pnpm@9.10.0",
+  "packageManager": "pnpm@10.18.3+sha512.bbd16e6d7286fd7e01f6b3c0b3c932cda2965c06a908328f74663f10a9aea51f1129eea615134bf992831b009eabe167ecb7008b597f40ff9bc75946aadfb08d",
   "description": "一个快速的 JavaScript 实用工具库",
   "author": {
     "name": "Zane Liu",
@@ -12,42 +12,46 @@
   "repository": "https://github.com/ZaneL1u/qva",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    }
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "unbuild",
-    "build:lib": "tsup --metafile",
-    "stub": "unbuild --stub",
+    "build": "tsdown",
     "dev": "vitest dev",
     "lint": "eslint .",
     "lint:fix": "automd && eslint . --fix",
     "prepack": "pnpm build",
-    "release": "pnpm test && changelogen --release && npm publish && git push --follow-tags",
+    "release": "pnpm test && changelogen --release && pnpm publish && git push --follow-tags",
     "test": "pnpm lint && pnpm test:types && vitest run --coverage",
+    "test:unit": "vitest run",
     "test:types": "tsc --noEmit --skipLibCheck",
     "up": "taze -rwiI"
   },
+  "publishConfig": {
+    "exports": {
+      ".": "./dist/index.js",
+      "./package.json": "./package.json"
+    }
+  },
+  "dependencies": {
+    "fflate": "^0.8.2"
+  },
   "devDependencies": {
-    "@antfu/eslint-config": "^3.7.1",
-    "@types/node": "^22.5.5",
-    "@vitest/coverage-v8": "^2.1.1",
-    "automd": "^0.3.8",
-    "changelogen": "^0.5.7",
-    "eslint": "^9.11.0",
-    "taze": "^0.16.9",
-    "tsup": "^8.3.0",
-    "typescript": "^5.6.2",
-    "unbuild": "3.0.0-rc.7",
-    "vitest": "^2.1.1"
+    "@antfu/eslint-config": "^6.2.0",
+    "@types/node": "^22.12.0",
+    "@vitest/coverage-v8": "^4.0.6",
+    "automd": "^0.4.2",
+    "changelogen": "^0.6.2",
+    "eslint": "^9.39.0",
+    "taze": "^19.9.0",
+    "tsdown": "^0.15.12",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.6"
   }
 }

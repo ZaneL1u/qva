@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { timSort } from '../src'
+import { timSort } from '../src/sort'
 
 describe('timSort', () => {
   it('should sort numbers in ascending order', () => {

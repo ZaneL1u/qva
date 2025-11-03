@@ -68,5 +68,10 @@
     "gql",
     "graphql",
     "astro"
+  ],
+  "cSpell.words": [
+    "automd",
+    "fflate",
+    "taze"
   ]
 }
