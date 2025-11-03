@@ -19,7 +19,7 @@ export function timSort<T>(
     compare = arg2
   }
   // Handle object array sorting by key
-  else if (typeof arg2 === 'string' && arg3 !== undefined || arg2 === undefined && isRecordArray(a)) {
+  else if ((typeof arg2 === 'string' && arg3 !== undefined) || (arg2 === undefined && isRecordArray(a))) {
     const key = (arg2 ?? (a[0] && Object.keys(a[0] as any)[0])) as keyof RecordType
     const order = arg3 ?? 'asc'
     compare = (x: any, y: any) => {
@@ -68,7 +68,8 @@ function timsortCore<T>(arr: T[], cmp: Comparator<T>): void {
 
   const pushRun = (start: number, len: number) => stack.push({ start, len })
   const mergeAt = (i: number) => {
-    const A = stack[i]; const B = stack[i + 1]
+    const A = stack[i]
+    const B = stack[i + 1]
     merge(arr, A.start, A.start + A.len, B.start + B.len, cmp)
     stack.splice(i, 2, { start: A.start, len: A.len + B.len })
   }
@@ -76,7 +77,10 @@ function timsortCore<T>(arr: T[], cmp: Comparator<T>): void {
   // Detect natural runs in the data
   for (let i = 0; i < n;) {
     let j = i + 1
-    if (j === n) { pushRun(i, 1); break }
+    if (j === n) {
+      pushRun(i, 1)
+      break
+    }
 
     const desc = cmp(arr[i], arr[j]) > 0
     while (j < n) {
@@ -119,7 +123,9 @@ function timsortCore<T>(arr: T[], cmp: Comparator<T>): void {
  */
 function merge<T>(arr: T[], lo: number, mi: number, hi: number, cmp: Comparator<T>): void {
   const tmp = arr.slice(lo, hi)
-  let i = 0; let j = mi - lo; let k = lo
+  let i = 0
+  let j = mi - lo
+  let k = lo
 
   while (i < mi - lo && j < hi - lo) {
     if (gallop(tmp, j, tmp[i], mi - lo, hi - lo, cmp)) {
@@ -141,14 +147,17 @@ function merge<T>(arr: T[], lo: number, mi: number, hi: number, cmp: Comparator<
  * Activated when 7+ consecutive elements come from the same run
  */
 function gallop<T>(src: T[], base: number, key: T, lo: number, hi: number, cmp: Comparator<T>): boolean {
-  let step = 1; let last = 0
+  let step = 1
+  let last = 0
   if (cmp(src[base], key) > 0)
     return true
   while (step < hi - base && cmp(src[base + step], key) <= 0) {
-    last = step; step = (step << 1) | 1
+    last = step
+    step = (step << 1) | 1
   }
   step = Math.min(step, hi - base)
-  lo = base + last; hi = base + step
+  lo = base + last
+  hi = base + step
   while (lo < hi) {
     const mid = (lo + hi) >>> 1
     if (cmp(src[mid], key) <= 0)
@@ -162,14 +171,16 @@ function gallop<T>(src: T[], base: number, key: T, lo: number, hi: number, cmp: 
  * Insert element using binary search to find position
  */
 function binaryInsert<T>(arr: T[], lo: number, hi: number, val: T, cmp: Comparator<T>): void {
-  let l = lo; let r = hi
+  let l = lo
+  let r = hi
   while (l < r) {
     const m = (l + r) >>> 1
     if (cmp(arr[m], val) > 0)
       r = m
     else l = m + 1
   }
-  for (let i = hi; i > l; i--) arr[i] = arr[i - 1]
+  for (let i = hi; i > l; i--)
+    arr[i] = arr[i - 1]
   arr[l] = val
 }
 
